@@ -50,3 +50,5 @@ scores = data.evaluate_algorithm(
     n_hidden,
 )
 
+print(f'scores : {scores}')
+print(f'mean : {sum(scores)/len(scores)}')
