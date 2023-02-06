@@ -7,22 +7,24 @@ Created on Sat Feb  4 10:03:57 2023
 https://machinelearningmastery.com/implement-backpropagation-algorithm-scratch-python/
 """
 
-from random import random,seed
-from typing import Dict,List
+# imports
+from random import random
+from typing import Dict,List,Union
 from math import exp
 
+# types
 NNET_NODE   = Dict[str,float]
 NNET_LAYER  = List[NNET_NODE]
 NNET        = List[NNET_LAYER]
 
 ATTRS       = List[float]
 CLASS       = int
-NNET_INPUT  = "ATTRS,CLASS"
+NNET_INPUT  = Union[ATTRS,CLASS]
 
 CLASS_1HOT  = List[int] # 1-hot encoding of CLASS, transform int (class) into List[int] (class vector)
 NNET_OUTPUT = CLASS_1HOT # 1-hot encoding prediction from nnet into class vector
 
-TRAINING_DATA = None
+DATASET     = List[List[NNET_INPUT]]
 
 # initialize node
 def initialize_node(n_node_inputs : int) -> NNET_NODE :
@@ -62,7 +64,7 @@ def activate(bias : float, weights : List[float], inputs : List[float]) -> float
 
 # neuron transfer
 def transfer(activation : float) -> float :
-    return 1/(1+exp(-activation))
+    return 1 / (1 + exp(-activation))
 
 # forward propagate input through network
 def forward_propagate(nnet : NNET, nnet_input : NNET_INPUT, verbose : int = 0) -> NNET_OUTPUT:
@@ -153,7 +155,7 @@ def class_to_1hot(n_outputs : int, class_idx : CLASS) -> CLASS_1HOT :
     return onehot
     
 # train a network for a fixed number of epochs
-def train_nnet(nnet : NNET, training_data : TRAINING_DATA, learning_rate : float, n_epoch : int, n_outputs : int):
+def train_nnet(nnet : NNET, training_data : DATASET, learning_rate : float, n_epoch : int, n_outputs : int):
     for epoch in range(n_epoch):
         sum_error = 0
         for nnet_input in training_data:
@@ -165,7 +167,9 @@ def train_nnet(nnet : NNET, training_data : TRAINING_DATA, learning_rate : float
             back_propagate_error(nnet,expected)
             # update nnet weights
             update_weights(nnet,nnet_input,learning_rate)
-        print(f'>epoch={epoch}, learning_rate={learning_rate}, error={sum_error}')
+            
+        if epoch % 50 == 0:
+            print(f'>epoch={epoch}, learning_rate={learning_rate}, error={sum_error}')
 
 '''
 # Test training backprop algorithm
@@ -200,4 +204,30 @@ for row in dataset:
     print(f'expected={row[-1]}, got={prediction}')
 '''
 
+# back-propagation algorithm with stochastic gradient descent
+def back_propagation(
+    training_set : DATASET,
+    test_set : DATASET,
+    learning_rate : float,
+    n_epoch : int,
+    n_hidden : int,
+    ) -> List[float] :
+    # setup nnet
+    n_inputs = len(training_set[0]) - 1
+    n_outputs = len(set([row[-1] for row in training_set]))
+    nnet = initialize_nnet(n_inputs,n_hidden,n_outputs)
+    
+    # fit nnet
+    train_nnet(
+        nnet,
+        training_set,
+        learning_rate,
+        n_epoch,
+        n_outputs)
+    
+    # do out-of-sample predictions
+    predictions = [predict(nnet,row) for row in test_set]
+
+    # return
+    return predictions
     
