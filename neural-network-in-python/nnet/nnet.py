@@ -7,13 +7,13 @@ Created on Sat Feb  4 10:03:57 2023
 https://machinelearningmastery.com/implement-backpropagation-algorithm-scratch-python/
 """
 
-from random import random 
+from random import random,seed
 from typing import Dict,List
 from math import exp
 
-NODE  = Dict[str,float]
-LAYER = List[NODE]
-NNET  = List[LAYER]
+NNET_NODE   = Dict[str,float]
+NNET_LAYER  = List[NNET_NODE]
+NNET        = List[NNET_LAYER]
 
 ATTRS       = List[float]
 CLASS       = int
@@ -22,15 +22,17 @@ NNET_INPUT  = "ATTRS,CLASS"
 CLASS_1HOT  = List[int] # 1-hot encoding of CLASS, transform int (class) into List[int] (class vector)
 NNET_OUTPUT = CLASS_1HOT # 1-hot encoding prediction from nnet into class vector
 
+TRAINING_DATA = None
+
 # initialize node
-def initialize_node(n_node_inputs : int) -> NODE :
+def initialize_node(n_node_inputs : int) -> NNET_NODE :
     return {
         'bias'    : random(),
         'weights' : [random() for i in range(n_node_inputs)]
     }
 
 # initialize layer
-def initialize_layer(n_layer_inputs : int, n_layer_nodes : int) -> LAYER :
+def initialize_layer(n_layer_inputs : int, n_layer_nodes : int) -> NNET_LAYER :
     return [initialize_node(n_layer_inputs) for i in range(n_layer_nodes)]
 
 # initialize network
@@ -63,17 +65,17 @@ def transfer(activation : float) -> float :
     return 1/(1+exp(-activation))
 
 # forward propagate input through network
-def forward_propagate(nnet : NNET, nnet_input : NNET_INPUT) -> NNET_OUTPUT:
+def forward_propagate(nnet : NNET, nnet_input : NNET_INPUT, verbose : int = 0) -> NNET_OUTPUT:
     layer_inputs = nnet_input
     for nnet_layer in nnet:
-        print(f"inputs \t\t: {layer_inputs}")
+        if verbose>0: print(f'inputs \t\t: {layer_inputs}')
         layer_outputs = []
         for layer_node in nnet_layer:
             activation = activate(layer_node['bias'],layer_node['weights'],layer_inputs)
             layer_node['output'] = transfer(activation) # enrich node dico with 'output'
             layer_outputs.append(layer_node['output'])
-        print(f"outputs \t: {layer_outputs}")
-        print()
+        if verbose>0: print(f'outputs \t: {layer_outputs}')
+        if verbose>0: print()
         layer_inputs = layer_outputs # prep for next iteration
     return layer_inputs
 
@@ -133,7 +135,7 @@ def update_weights(nnet : NNET, nnet_input : NNET_INPUT, learning_rate : float) 
         # get inputs for current layer
         if i == 0:
             # is attrs (NNET_INPUT without CLASS) for input layer
-            attrs = nnet_input[-1]
+            attrs = nnet_input[:-1]
         else:
             # is output from previous layer for non-input layers
             attrs = [node['output'] for node in nnet[i-1]]
@@ -142,7 +144,7 @@ def update_weights(nnet : NNET, nnet_input : NNET_INPUT, learning_rate : float) 
             # update node bias
             node['bias'] -= learning_rate * node['delta']
             # update node input weighting
-            for j in range(attrs):
+            for j in range(len(attrs)):
                 node['weights'][j] -= learning_rate * node['delta'] * attrs[j]
     
 def class_to_1hot(n_outputs : int, class_idx : CLASS) -> CLASS_1HOT :
@@ -151,10 +153,10 @@ def class_to_1hot(n_outputs : int, class_idx : CLASS) -> CLASS_1HOT :
     return onehot
     
 # train a network for a fixed number of epochs
-def train_nnet(nnet : NNET, train : None, learning_rate : float, n_epoch : int, n_outputs : int):
+def train_nnet(nnet : NNET, training_data : TRAINING_DATA, learning_rate : float, n_epoch : int, n_outputs : int):
     for epoch in range(n_epoch):
         sum_error = 0
-        for nnet_input in train:
+        for nnet_input in training_data:
             # compute nnet error given in put
             nnet_output = forward_propagate(nnet,nnet_input)
             expected = class_to_1hot(n_outputs,nnet_input[-1])
@@ -163,3 +165,39 @@ def train_nnet(nnet : NNET, train : None, learning_rate : float, n_epoch : int, 
             back_propagate_error(nnet,expected)
             # update nnet weights
             update_weights(nnet,nnet_input,learning_rate)
+        print(f'>epoch={epoch}, learning_rate={learning_rate}, error={sum_error}')
+
+'''
+# Test training backprop algorithm
+seed(1)
+dataset = [
+    [2.7810836,2.550537003,0],
+    [1.465489372,2.362125076,0],
+    [3.396561688,4.400293529,0],
+    [1.38807019,1.850220317,0],
+    [3.06407232,3.005305973,0],
+    [7.627531214,2.759262235,1],
+    [5.332441248,2.088626775,1],
+    [6.922596716,1.77106367,1],
+    [8.675418651,-0.242068655,1],
+    [7.673756466,3.508563011,1]
+]
+n_inputs = len(dataset[0]) - 1
+n_outputs = len(set([row[-1] for row in dataset]))
+nnet = initialize_nnet(n_inputs, 2, n_outputs)
+train_nnet(nnet, dataset, 0.5, 20, n_outputs)
+print_nnet(nnet)
+'''
+
+# make a prediction with a network
+def predict(nnet : NNET,nnet_input : NNET_INPUT) -> CLASS:
+    nnet_output = forward_propagate(nnet,nnet_input)
+    return nnet_output.index(max(nnet_output))
+
+'''
+for row in dataset:
+    prediction = predict(nnet,row)
+    print(f'expected={row[-1]}, got={prediction}')
+'''
+
+    
